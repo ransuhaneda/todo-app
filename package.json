@@ -1,0 +1,19 @@
+{
+  "name": "frontend-test-20250827",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "install": "pnpm install --prefix server && pnpm install --prefix client",
+    "server": "pnpm --prefix server start",
+    "client": "pnpm --prefix client start",
+    "dev": "concurrently \"pnpm run server\" \"pnpm run client\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.10"
+  },
+  "description": ""
+}
