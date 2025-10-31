@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../database/dbConfig');
 
 router.get('/', (req, res) => {
   db.all('SELECT * FROM todos', [], (err, rows) => {
@@ -15,12 +15,11 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   const { task } = req.body;
 
-  if (!task) {
-    res.status(400).json({ error: 'Task is required' });
-    return;
+  if (!task || task.trim() === '') {
+    return res.status(400).json({ error: 'Task is required' });
   }
 
-  db.run('INSERT INTO todos (task) VALUES (?)', [task], function (err) {
+  db.run('INSERT INTO todos (task) VALUES (?)', [task.trim()], function (err) {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -33,27 +32,30 @@ router.put('/:id', (req, res) => {
   const { id } = req.params;
   const { task, completed } = req.body;
 
-  if (!task) {
-    req.status(400).json({ error: 'Task is required' });
-    return;
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ error: 'Valid ID is required' });
   }
 
-  db.run(
-    'UPDATE todos SET task = ?, completed = ? WHERE id = ?',
-    [task, completed ? 1 : 0, id],
+  if (!task || task.trim() === '') {
+    return res.status(400).json({ error: 'Task is required' });
+  }
 
-    function (err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
+  const prepstmt = db.prepare('UPDATE todos SET task = ?, completed = ? WHERE id = ?');
 
-      if (this.changes === 0) {
-        req.status(404).json({ error: 'Todo not found' });
-        return;
-      }
-      res.json({ id: parseInt(id), task, completed });
+  prepstmt.run(task, completed ? 1 : 0, id, function (err) {
+    prepstmt.finalize();
+
+    if (err) {
+      res.status(500).json({ error: 'Unexpected Error: Todo Modification Failed' });
+      return;
     }
+
+    if (this.changes === 0) {
+      res.status(404).json({ error: 'Todo not found' });
+      return;
+    }
+    res.json({ id: parseInt(id), task: task.trim(), completed });
+  }
   );
 });
 
@@ -61,18 +63,25 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
 
-  db.run('DELETE FROM todos WHERE id = ?', [id], function (err) {
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ error: 'Valid ID is required' });
+  }
+
+  const prepstmt = db.prepare('DELETE FROM todos WHERE id = ?');
+  prepstmt.run(id, function (err) {
+    prepstmt.finalize();
+
     if (err) {
-      req.status(500).json({ error: err.message });
+      res.status(500).json({ error: 'Unexpected Error: Todo Deletion Failed' });
       return;
     }
 
     if (this.changes === 0) {
-      req.status(404).json({ error: 'Todo not found' });
+      res.status(404).json({ error: 'Todo not found' });
       return;
     }
 
-    req.status(204).send();
+    res.status(204).send();
   })
 })
 
