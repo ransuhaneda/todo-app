@@ -1,27 +1,13 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 
+const PORT = process.env.PORT || 3001;
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+
 const app = express();
-const port = 3001;
 
 app.use(cors());
 app.use(express.json());
-
-const db = new sqlite3.Database('./todos.db', (err) => {
-  if (err) {
-    console.error(err.message);
-  }
-  console.log('Connected to the todos database.');
-});
-
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS todos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task TEXT NOT NULL,
-    completed BOOLEAN NOT NULL DEFAULT 0
-  )`);
-});
 
 app.get('/api/todos', (req, res) => {
   db.all('SELECT * FROM todos', [], (err, rows) => {
@@ -48,6 +34,6 @@ app.post('/api/todos', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
