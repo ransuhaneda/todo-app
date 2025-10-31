@@ -6,7 +6,14 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 
 const app = express();
 
-app.use(cors());
+const corsOptions = {
+  origin: CLIENT_URL,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get('/api/todos', (req, res) => {
