@@ -1,7 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = path.join(__dirname, '../db/todos.db');
+const dbPath = path.join(__dirname, './todos.db');
 
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
@@ -15,7 +15,14 @@ db.serialize(() => {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     task TEXT NOT NULL,
     completed BOOLEAN NOT NULL DEFAULT 0
-  )`);
+  )`,
+    (err) => {
+      if (err) {
+        console.error('Error creating todos table:', err);
+      } else {
+        console.log('Todos table initialized');
+      }
+    });
 });
 
 module.exports = db;
