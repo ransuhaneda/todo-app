@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
+import { useState, useEffect } from 'react';
+import '../assets/styles/App.css';
 
 function App() {
   const [todos, setTodos] = useState([]);
