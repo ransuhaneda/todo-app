@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import '../assets/styles/App.css';
-import api from '../services/api';
+import './assets/styles/App.css';
+import api from './services/api';
 
 function App() {
   const [todos, setTodos] = useState([]);

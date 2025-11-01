@@ -1,16 +1,27 @@
 const API_URL = process.env.API_URL || 'http://localhost:3001/api';
 
+const handleResponse = async (response) => {
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || `HTTP error! status: ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.json();
+};
+
 const api = {
   getTodos: async () => {
     const response = await fetch(`${API_URL}/todos`);
-    if (!response.ok) throw new Error('Failed to fetch todos');
-    return response.json();
+    return handleResponse(response);
   },
 
   getTodo: async (id) => {
     const response = await fetch(`${API_URL}/todos/${id}`);
-    if (!response.ok) throw new Error('Failed to fetch todo');
-    return response.json();
+    return handleResponse(response);
   },
 
   createTodo: async (todo) => {
@@ -19,8 +30,7 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(todo),
     });
-    if (!response.ok) throw new Error('Failed to create todo');
-    return response.json();
+    return handleResponse(response);
   },
 
   updateTodo: async (id, updates) => {
@@ -29,16 +39,14 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     });
-    if (!response.ok) throw new Error('Failed to update todo');
-    return response.json();
+    return handleResponse(response);
   },
 
   deleteTodo: async (id) => {
     const response = await fetch(`${API_URL}/todos/${id}`, {
       method: 'DELETE',
     });
-    if (!response.ok) throw new Error('Failed to delete todo');
-    return response.json();
+    return handleResponse(response);
   },
 };
 
