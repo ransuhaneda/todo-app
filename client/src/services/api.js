@@ -14,8 +14,9 @@ const handleResponse = async (response) => {
 };
 
 const api = {
-  getTodos: async () => {
-    const response = await fetch(`${API_URL}/todos`);
+  getTodos: async (search = '') => {
+    const url = search ? `${API_URL}/todos?search=${encodeURIComponent(search)}` : `${API_URL}/todos`;
+    const response = await fetch(url);
     return handleResponse(response);
   },
 

@@ -42,14 +42,16 @@ h1 {
   border-left: 4px solid #c00;
 }
 
-.add-todo-form {
+.add-todo-form,
+.search-input {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-bottom: 30px;
 }
 
-.add-todo-form input {
+.add-todo-form input,
+.search-input {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -57,7 +59,8 @@ h1 {
   font-family: inherit;
 }
 
-.add-todo-form input:focus {
+.add-todo-form input:focus,
+.search-input:focus {
   outline: none;
   border-color: #4caf50;
   box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);

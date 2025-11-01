@@ -3,13 +3,26 @@ const router = express.Router();
 const db = require('../database/dbConfig');
 
 router.get('/', (req, res) => {
-  db.all('SELECT * FROM todos', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
+
+  const search = req.query.search || '';
+
+  if (search) {
+    db.all('SELECT * FROM todos WHERE LOWER(task) LIKE LOWER(?)', [`%${search}%`], (err, rows) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.json(rows);
+    });
+  } else {
+    db.all('SELECT * FROM todos', [], (err, rows) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;;
+      }
+      res.json(rows);
+    });
+  }
 });
 
 router.post('/', (req, res) => {

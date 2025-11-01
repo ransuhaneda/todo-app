@@ -1,30 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './assets/styles/App.css';
 import api from './services/api';
+
+import { SearchBox } from "./components/SearchBox";
 
 function App() {
   const [todos, setTodos] = useState([]);
   const [task, setTask] = useState('');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchTodos = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getTodos();
-      setTodos(data);
-      setError(null);
-    } catch (err) {
-      setError('Failed to fetch todos');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchTodos = useCallback(
+    async (keyword = '', signal) => {
+      try {
+        setLoading(true);
+        const data = await api.getTodos(keyword);
+        setTodos(data);
+        setError(null);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setError('Failed to fetch todos');
+          console.error(err);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }, []);
 
   useEffect(() => {
-    fetchTodos();
-  }, []);
+    const abortController = new AbortController();
+
+    fetchTodos(search, abortController.signal);
+
+    return () => {
+      abortController.abort();
+    };
+  }, [fetchTodos, search]);
 
   const handleAddTodo = async (e) => {
     e.preventDefault();
@@ -69,6 +81,8 @@ function App() {
 
         {error && <div className="error-message">{error}</div>}
 
+        <SearchBox value={search} onChange={setSearch} />
+
         <form onSubmit={handleAddTodo} className="add-todo-form">
           <input
             type="text"
@@ -76,6 +90,7 @@ function App() {
             onChange={(e) => setTask(e.target.value)}
             placeholder="Add a new task"
             maxLength="250"
+            autoFocus
           />
           <button type="submit">Add</button>
         </form>
