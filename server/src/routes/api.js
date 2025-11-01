@@ -9,23 +9,35 @@ const handleDbError = (res, err, errorMessage = 'Database operation failed') => 
 
 const executeQuery = (query, params = []) => {
   return new Promise((resolve, reject) => {
-    const stmt = db.prepare(query);
-    stmt.all(params, (err, rows) => {
-      stmt.finalize();
-      if (err) reject(err);
-      else resolve(rows);
-    })
-  })
-}
+    let stmt;
+    try {
+      stmt = db.prepare(query);
+      stmt.all(params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    } catch (err) {
+      reject(err);
+    } finally {
+      if (stmt) stmt.finalize();
+    }
+  });
+};
 
 const executeRun = (query, params = []) => {
   return new Promise((resolve, reject) => {
-    const stmt = db.prepare(query);
-    stmt.run(params, function (err) {
-      stmt.finalize();
-      if (err) reject(err);
-      else resolve(this);
-    })
+    let stmt;
+    try {
+      stmt = db.prepare(query);
+      stmt.run(params, function (err) {
+        if (err) reject(err);
+        else resolve(this);
+      })
+    } catch (err) {
+      reject(err);
+    } finally {
+      if (stmt) stmt.finalize();
+    }
   });
 };
 
@@ -35,9 +47,15 @@ const getTodos = async (req, res) => {
     let rows;
 
     if (search) {
-      rows = await executeQuery('SELECT * FROM todos WHERE LOWER(task) LIKE LOWER(?)', [`%${search}%`]);
+      rows = await executeQuery(
+        'SELECT * FROM todos WHERE LOWER(task) LIKE LOWER(?)',
+        [`%${search}%`]
+      );
     } else {
-      rows = await executeQuery('SELECT * FROM todos', []);
+      rows = await executeQuery(
+        'SELECT * FROM todos',
+        []
+      );
     }
 
     res.json(rows);
@@ -85,55 +103,39 @@ const updateTodo = async (req, res) => {
       return res.status(400).json({ error: 'Task cannot be empty' });
     }
 
-    const updates = [];
-    const values = [];
+    const [currentTodo] = await executeQuery(
+      'SELECT * FROM todos WHERE id = ?',
+      [id]
+    );
 
-    if (task !== undefined) {
-      updates.push('task = ?');
-      values.push(task.trim());
+    if (!currentTodo) {
+      return res.status(404).json({ error: 'Todo not found' });
     }
 
-    if (completed !== undefined) {
-      updates.push('completed = ?');
-      values.push(completed ? 1 : 0);
+    const finalTask = task !== undefined ? task.trim() : currentTodo.task;
+    const finalCompleted = completed !== undefined ? (completed ? 1 : 0) : currentTodo.completed;
+
+    const result = await executeRun(
+      'UPDATE todos SET task = ?, completed = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [finalTask, finalCompleted, id]
+    );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Todo not found' });
     }
 
-    updates.push('updated_at = CURRENT_TIMESTAMP')
-    values.push(id);
+    const [updatedTodo] = await executeQuery(
+      'SELECT * FROM todos WHERE id = ?',
+      [id]
+    );
 
-    const prepstmt = db.prepare(`UPDATE todos SET ${updates.join(', ')} WHERE id = ?`);
-
-    prepstmt.run(...values, function (err) {
-      prepstmt.finalize();
-
-      if (err) {
-        res.status(500).json({ error: 'Unexpected Error: Todo Modification Failed' });
-        return;
-      }
-
-      if (this.changes === 0) {
-        res.status(404).json({ error: 'Todo not found' });
-        return;
-      }
-
-      db.get('SELECT * FROM todos WHERE id = ?', [id], (err, row) => {
-        if (err) {
-          res.status(500).json({ error: err.message });
-          return;
-        }
-
-        if (!row) {
-          res.status(404).json({ error: 'Todo not found after updating' });
-          return;
-        }
-
-        res.json({
-          id: row.id,
-          task: row.task,
-          completed: row.completed === 1
-        });
-      });
+    res.json({
+      id: parseInt(id),
+      task: finalTask,
+      completed: finalCompleted === 1,
+      updated_at: updatedTodo.updated_at
     });
+
   } catch (err) {
     handleDbError(res, err, 'Failed to update todo')
   }
@@ -147,22 +149,18 @@ const deleteTodo = async (req, res) => {
       return res.status(400).json({ error: 'Valid ID is required' });
     }
 
-    const prepstmt = db.prepare('DELETE FROM todos WHERE id = ?');
-    prepstmt.run(id, function (err) {
-      prepstmt.finalize();
+    const result = await executeRun(
+      'DELETE FROM todos WHERE id = ?',
+      [id]
+    );
 
-      if (err) {
-        res.status(500).json({ error: 'Unexpected Error: Todo Deletion Failed' });
-        return;
-      }
+    if (result.changes === 0) {
+      res.status(404).json({ error: 'Todo not found' });
+      return;
+    }
 
-      if (this.changes === 0) {
-        res.status(404).json({ error: 'Todo not found' });
-        return;
-      }
+    res.status(204).send();
 
-      res.status(204).send();
-    })
   } catch (err) {
     handleDbError(res, err, 'Failed to delete todo')
   }
