@@ -1,4 +1,4 @@
-const API_URL = process.env.API_URL || 'http://localhost:3001/api';
+const API_URL = 'http://localhost:3001/api';
 
 const handleResponse = async (response) => {
   if (!response.ok) {
@@ -14,38 +14,43 @@ const handleResponse = async (response) => {
 };
 
 const api = {
-  getTodos: async (search = '') => {
-    const url = search ? `${API_URL}/todos?search=${encodeURIComponent(search)}` : `${API_URL}/todos`;
-    const response = await fetch(url);
+  getTodos: async (search = '', options = {}) => {
+    const url = search
+      ? `${API_URL}/todos?search=${encodeURIComponent(search)}`
+      : `${API_URL}/todos`;
+    const response = await fetch(url, options);
     return handleResponse(response);
   },
 
-  getTodo: async (id) => {
-    const response = await fetch(`${API_URL}/todos/${id}`);
+  getTodo: async (id, options = {}) => {
+    const response = await fetch(`${API_URL}/todos/${id}`, options);
     return handleResponse(response);
   },
 
-  createTodo: async (todo) => {
+  createTodo: async (todo, options = {}) => {
     const response = await fetch(`${API_URL}/todos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(todo),
+      ...options,
     });
     return handleResponse(response);
   },
 
-  updateTodo: async (id, updates) => {
+  updateTodo: async (id, updates, options = {}) => {
     const response = await fetch(`${API_URL}/todos/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
+      ...options,
     });
     return handleResponse(response);
   },
 
-  deleteTodo: async (id) => {
+  deleteTodo: async (id, options = {}) => {
     const response = await fetch(`${API_URL}/todos/${id}`, {
       method: 'DELETE',
+      ...options
     });
     return handleResponse(response);
   },

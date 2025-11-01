@@ -1,76 +1,28 @@
-import { useState, useEffect, useCallback } from 'react';
-import './assets/styles/App.css';
-import api from './services/api';
+import { useState } from "react";
+import "./assets/styles/App.css";
 
 import { SearchBox } from "./components/SearchBox";
 
+import { useTodos } from "./hooks/useTodos";
+
 function App() {
-  const [todos, setTodos] = useState([]);
-  const [task, setTask] = useState('');
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchTodos = useCallback(
-    async (keyword = '', signal) => {
-      try {
-        setLoading(true);
-        const data = await api.getTodos(keyword);
-        setTodos(data);
-        setError(null);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          setError('Failed to fetch todos');
-          console.error(err);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  useEffect(() => {
-    const abortController = new AbortController();
-
-    fetchTodos(search, abortController.signal);
-
-    return () => {
-      abortController.abort();
-    };
-  }, [fetchTodos, search]);
+  const [task, setTask] = useState("");
+  const [search, setSearch] = useState("");
+  const {
+    todos,
+    loading,
+    error,
+    addTodo,
+    deleteTodo,
+    toggleTodo,
+    setError,
+  } = useTodos(search);
 
   const handleAddTodo = async (e) => {
     e.preventDefault();
-
-    try {
-      const newTodo = await api.createTodo({ task });
-      setTodos([newTodo, ...todos]);
-      setTask('');
-      setError(null);
-    } catch (err) {
-      setError('Failed to add todo');
-      console.error(err);
-    }
-  };
-
-  const handleToggleTodo = async (todo) => {
-    try {
-      const updated = await api.updateTodo(todo.id, { completed: !todo.completed });
-      setTodos(todos.map(t => t.id === todo.id ? updated : t));
-      setError(null);
-    } catch (err) {
-      setError('Failed to update todo');
-      console.error(err);
-    }
-  };
-
-  const handleDeleteTodo = async (id) => {
-    try {
-      await api.deleteTodo(id);
-      setTodos(todos.filter(t => t.id !== id));
-      setError(null);
-    } catch (err) {
-      setError('Failed to delete todo');
-      console.error(err);
+    if (task.trim()) {
+      await addTodo(task);
+      setTask("");
     }
   };
 
@@ -79,7 +31,12 @@ function App() {
       <header className="container">
         <h1>Todo List</h1>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message">
+            {error}
+            <button onClick={() => setError(null)}>Close</button>
+          </div>
+        )}
 
         <SearchBox value={search} onChange={setSearch} />
 
@@ -95,26 +52,35 @@ function App() {
           <button type="submit">Add</button>
         </form>
 
+        {loading && <p className="loading">Updating results...</p>}
 
-        {loading ? (
-          <p>Loading todos...</p>
-        ) : todos.length === 0 ? (
-          <p className="empty-message">No todos yet. Create one to get started!</p>
+        {todos.length === 0 && !loading ? (
+          <p className="empty-message">
+            {search
+              ? "No todos match your search. Try a different keyword!"
+              : "No todos yet. Create one to get started!"}
+          </p>
         ) : (
           <ul className="todo-list">
             {todos.map((todo) => (
-              <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+              <li
+                key={todo.id}
+                className={`todo-item ${todo.completed ? "completed" : ""}`}
+              >
                 <input
                   type="checkbox"
                   checked={todo.completed}
-                  onChange={() => handleToggleTodo(todo)}
+                  onChange={() => toggleTodo(todo)}
+                  aria-label={`Mark "${todo.task}" as ${todo.completed ? "incomplete" : "complete"
+                    }`}
                 />
                 <div className="todo-content">
                   <h3>{todo.task}</h3>
                 </div>
                 <button
                   className="delete-btn"
-                  onClick={() => handleDeleteTodo(todo.id)}
+                  onClick={() => deleteTodo(todo.id)}
+                  aria-label={`Delete "${todo.task}"`}
                 >
                   Delete
                 </button>
