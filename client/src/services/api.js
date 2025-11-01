@@ -25,7 +25,7 @@ const api = {
 
   updateTodo: async (id, updates) => {
     const response = await fetch(`${API_URL}/todos/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     });

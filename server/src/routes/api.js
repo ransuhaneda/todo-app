@@ -28,7 +28,7 @@ router.post('/', (req, res) => {
   });
 });
 
-router.put('/:id', (req, res) => {
+router.patch('/:id', (req, res) => {
   const { id } = req.params;
   const { task, completed } = req.body;
 
@@ -36,13 +36,32 @@ router.put('/:id', (req, res) => {
     return res.status(400).json({ error: 'Valid ID is required' });
   }
 
-  if (!task || task.trim() === '') {
-    return res.status(400).json({ error: 'Task is required' });
+  if (task === undefined && completed === undefined) {
+    return res.status(400).json({ error: 'At least one field (task or completed) is required for update' });
   }
 
-  const prepstmt = db.prepare('UPDATE todos SET task = ?, completed = ? WHERE id = ?');
+  if (task !== undefined && task.trim() === '') {
+    return res.status(400).json({ error: 'Task cannot be empty' });
+  }
 
-  prepstmt.run(task, completed ? 1 : 0, id, function (err) {
+  const updates = [];
+  const values = [];
+
+  if (task !== undefined) {
+    updates.push('task = ?');
+    values.push(task.trim());
+  }
+
+  if (completed !== undefined) {
+    updates.push('completed = ?');
+    values.push(completed ? 1 : 0);
+  }
+
+  values.push(id);
+
+  const prepstmt = db.prepare(`UPDATE todos SET ${updates.join(', ')} WHERE id = ?`);
+
+  prepstmt.run(...values, function (err) {
     prepstmt.finalize();
 
     if (err) {
@@ -54,9 +73,25 @@ router.put('/:id', (req, res) => {
       res.status(404).json({ error: 'Todo not found' });
       return;
     }
-    res.json({ id: parseInt(id), task: task.trim(), completed });
-  }
-  );
+
+    db.get('SELECT * FROM todos WHERE id = ?', [id], (err, row) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+
+      if (!row) {
+        res.status(404).json({ error: 'Todo not found after updating' });
+        return;
+      }
+
+      res.json({
+        id: row.id,
+        task: row.task,
+        completed: row.completed === 1
+      });
+    });
+  });
 });
 
 
