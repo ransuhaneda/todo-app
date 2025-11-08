@@ -4,6 +4,7 @@ import "./assets/styles/App.css";
 import { SearchBox } from "./components/SearchBox";
 
 import { useTodos } from "./hooks/useTodos";
+import { TodoItem } from "./components/TodoItem";
 
 function App() {
   const [task, setTask] = useState("");
@@ -13,9 +14,17 @@ function App() {
     loading,
     error,
     addTodo,
+    updateTodo,
     deleteTodo,
     toggleTodo,
     setError,
+    editingId,
+    editValues,
+    setEditingTodo,
+    updateEditValue,
+    saveEdit,
+    savingIds,
+    cancelEdit,
   } = useTodos(search);
 
   const handleAddTodo = async (e) => {
@@ -26,6 +35,18 @@ function App() {
     }
   };
 
+  const handleEditTodo = async (id, updates) => {
+    await updateTodo(id, updates);
+  };
+
+  const handleToggleTodo = (todo) => {
+    toggleTodo(todo);
+  };
+
+  const handleDeleteTodo = async (id) => {
+    await deleteTodo(id);
+  };
+
   return (
     <div className="App">
       <header className="container">
@@ -34,7 +55,7 @@ function App() {
         {error && (
           <div className="error-message">
             {error}
-            <button onClick={() => setError(null)}>Close</button>
+            <button className="error__button--close" onClick={() => setError(null)}>Close</button>
           </div>
         )}
 
@@ -63,28 +84,20 @@ function App() {
         ) : (
           <ul className="todo-list">
             {todos.map((todo) => (
-              <li
+              <TodoItem
                 key={todo.id}
-                className={`todo-item ${todo.completed ? "completed" : ""}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={todo.completed}
-                  onChange={() => toggleTodo(todo)}
-                  aria-label={`Mark "${todo.task}" as ${todo.completed ? "incomplete" : "complete"
-                    }`}
-                />
-                <div className="todo-content">
-                  <h3>{todo.task}</h3>
-                </div>
-                <button
-                  className="delete-btn"
-                  onClick={() => deleteTodo(todo.id)}
-                  aria-label={`Delete "${todo.task}"`}
-                >
-                  Delete
-                </button>
-              </li>
+                todo={todo}
+                onToggle={handleToggleTodo}
+                onDelete={handleDeleteTodo}
+                onEdit={handleEditTodo}
+                editingId={editingId}
+                editValues={editValues}
+                onSetEditing={setEditingTodo}
+                onUpdateEditValue={updateEditValue}
+                onSaveEdit={saveEdit}
+                isSaving={savingIds.has(todo.id)}
+                onCancelEdit={cancelEdit}
+              />
             ))}
           </ul>
         )}

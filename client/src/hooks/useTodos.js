@@ -8,6 +8,9 @@ export const useTodos = (searchTerm) => {
   const [filteredTodos, setFilteredTodos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editValues, setEditValues] = useState({});
+  const [savingIds, setSavingIds] = useState(new Set());
   const abortControllerRef = useRef(null);
 
   const safeSearchTerm = searchTerm || "";
@@ -29,8 +32,6 @@ export const useTodos = (searchTerm) => {
 
   // Server Side Search Request
   useEffect(() => {
-
-
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -79,9 +80,17 @@ export const useTodos = (searchTerm) => {
     };
   }, [debouncedSearch, searchTerm]);
 
+  const addToSavingIds = (id) => setSavingIds(prev => new Set([...prev, id]));
+  const removeFromSavingIds = (id) => setSavingIds(prev => {
+    const next = new Set(prev);
+    next.delete(id);
+    return next;
+  });
+
   const addTodo = useCallback(async (task) => {
     if (!task.trim()) return;
 
+    addToSavingIds(task);
     try {
       setError(null);
       const newTodo = await api.createTodo({ task });
@@ -89,14 +98,16 @@ export const useTodos = (searchTerm) => {
     } catch (err) {
       setError('Failed to add todo');
       console.error(err);
+    } finally {
+      removeFromSavingIds(task);
     }
   }, []);
 
   const deleteTodo = useCallback(async (id) => {
-
     const previousAllTodos = allTodos;
     const previousFilteredTodos = filteredTodos;
 
+    addToSavingIds(id);
     try {
       setError(null);
       setAllTodos(prev => prev.filter(t => t.id !== id));
@@ -106,14 +117,16 @@ export const useTodos = (searchTerm) => {
       console.error(err);
       setAllTodos(previousAllTodos);
       setFilteredTodos(previousFilteredTodos);
+    } finally {
+      removeFromSavingIds(id);
     }
   }, [allTodos, filteredTodos]);
 
   const updateTodo = useCallback(async (id, updates) => {
-
     const previousAllTodos = allTodos;
     const previousFilteredTodos = filteredTodos;
 
+    addToSavingIds(id);
     try {
       setError(null);
       setAllTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
@@ -123,12 +136,59 @@ export const useTodos = (searchTerm) => {
       console.error(err);
       setAllTodos(previousAllTodos);
       setFilteredTodos(previousFilteredTodos);
+    } finally {
+      removeFromSavingIds(id);
     }
   }, [allTodos, filteredTodos]);
 
   const toggleTodo = useCallback((todo) => {
     updateTodo(todo.id, { completed: !todo.completed });
   }, [updateTodo]);
+
+  const setEditingTodo = useCallback((id) => {
+    setEditingId(id);
+    if (id) {
+      const todo = allTodos.find(t => t.id === id);
+      setEditValues(prev => ({ ...prev, [id]: todo?.task || '' }));
+    }
+  }, [allTodos]);
+
+  const updateEditValue = useCallback((id, value) => {
+    setEditValues((prev) => ({ ...prev, [id]: value }));
+  }, []);
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setEditValues({});
+  }, []);
+
+  const saveEdit = useCallback(
+    async (id) => {
+      const editValue = editValues[id];
+
+      if (!editValue?.trim()) {
+        cancelEdit();
+        return;
+      }
+
+      const todo = allTodos.find((t) => t.id === id);
+      if (editValue.trim() === todo?.task) {
+        cancelEdit();
+        return;
+      }
+
+      addToSavingIds(id);
+      try {
+        await updateTodo(id, { task: editValue.trim() });
+        cancelEdit();
+      } catch (err) {
+        console.error('Error saving edit:', err);
+        throw err;
+      } finally {
+        removeFromSavingIds(id);
+      }
+    }, [editValues, allTodos, updateTodo, cancelEdit]
+  );
 
   // Cleanup 
   useEffect(() => {
@@ -147,6 +207,13 @@ export const useTodos = (searchTerm) => {
     addTodo,
     deleteTodo,
     updateTodo,
+    editingId,
+    editValues,
+    setEditingTodo,
+    updateEditValue,
+    saveEdit,
+    savingIds,
+    cancelEdit,
     toggleTodo,
     setError,
   };
